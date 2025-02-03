@@ -36,11 +36,28 @@ The script:
 - Sleeps for 1 hour (3600 seconds)
 - Repeats this cycle until stopped
 
+
+View the process ID
+cat reader.pid
+Check if the process is active
+ps -p $(cat reader.pid)
+
 ## Stopping the script
 
-- If running in the foreground: Press `Ctrl+C`
-- If running in the background: Find the process ID and kill it:
-  ```bash
-  ps aux | grep run_hourly.sh
-  kill <process_id>
-  ``` 
+You can stop the script in several ways:
+
+1. Using the PID file (recommended):
+   ```bash
+   kill $(cat reader.pid)
+   ```
+
+2. Using process search (alternative):
+   ```bash
+   ps aux | grep run_hourly.sh
+   kill <process_id>
+   ```
+
+3. If running in the foreground:
+   - Press `Ctrl+C`
+
+The script will clean up its PID file automatically when stopped.
