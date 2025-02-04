@@ -25,15 +25,31 @@ cleanup() {
 # Set trap for cleanup
 trap cleanup EXIT SIGINT SIGTERM
 
-while true; do
-    # Clean up old logs
-    cleanup_old_logs
-    
-    # Run the Python script
-    python "$SCRIPT_DIR/read_all.py"
-    
-    # Sleep for 1 hour (3600 seconds)
-    sleep 3600
-    
-    echo "Running next iteration..."
-done 
+# If running in background mode, redirect output to nohup.out
+if [[ "$1" == "background" ]]; then
+    exec nohup "$0" run >> "$SCRIPT_DIR/nohup.out" 2>&1 &
+    echo "Started in background mode. PID: $!"
+    echo $! > "$SCRIPT_DIR/reader.pid"
+    exit 0
+fi
+
+# Main loop
+if [[ "$1" == "run" ]]; then
+    while true; do
+        # Clean up old logs
+        cleanup_old_logs
+        
+        # Run the Python script
+        python "$SCRIPT_DIR/read_all.py"
+        
+        # Sleep for 1 hour (3600 seconds)
+        sleep 3600
+        
+        echo "Running next iteration..."
+    done
+fi
+
+# If no arguments provided, run in foreground
+if [[ -z "$1" ]]; then
+    "$0" run
+fi 

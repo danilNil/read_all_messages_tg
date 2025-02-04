@@ -45,3 +45,19 @@ htmlcov/
 .cache
 coverage.xml
 *.cover
+
+
+# Python session
+session_name.session
+session_name.session-journal
+
+# Logs
+telegram_reader_*.log
+
+# Process ID
+reader.pid
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc

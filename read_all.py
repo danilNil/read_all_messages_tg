@@ -4,6 +4,10 @@ import asyncio
 from telethon.tl.functions.stories import GetAllStoriesRequest, ReadStoriesRequest
 import logging
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Настройка логирования
 log_filename = f'telegram_reader_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
@@ -17,10 +21,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Введите ваши учетные данные
-api_id = '27548810'
-api_hash = '7a3b0463bc09ba8c69a9ef369c2ad9bd'
-phone_number = '+79514141228'
+# Get credentials from environment variables
+api_id = os.getenv('API_ID')
+api_hash = os.getenv('API_HASH')
+phone_number = os.getenv('PHONE_NUMBER')
+
+if not all([api_id, api_hash, phone_number]):
+    logger.error("Missing required environment variables. Please check your .env file")
+    exit(1)
 
 # Создание клиента
 client = TelegramClient('session_name', api_id, api_hash)
@@ -29,6 +37,12 @@ async def main():
     # Вход в аккаунт
     await client.start(phone_number)
     logger.info("Successfully logged into Telegram")
+    
+    # Получаем информацию о текущем пользователе
+    me = await client.get_me()
+    my_username = me.username
+    my_id = me.id
+    logger.info(f"Logged in as {my_username} (ID: {my_id})")
 
     # Получение и чтение историй (stories)
     logger.info("Starting to read stories...")
@@ -85,6 +99,16 @@ async def main():
         # Получаем только непрочитанные сообщения из чата
         async for message in client.iter_messages(dialog.id, limit=dialog.unread_count):
             try:
+                # Проверяем, есть ли упоминание пользователя в сообщении
+                mentioned = False
+                if hasattr(message, 'mentioned'):
+                    mentioned = message.mentioned
+                
+                # Пропускаем сообщения с упоминанием пользователя
+                if mentioned:
+                    logger.info(f'Skipping message with mention from chat {dialog.title}')
+                    continue
+                
                 # Форматируем дату сообщения
                 date = message.date.strftime("%Y-%m-%d %H:%M:%S")
                 
