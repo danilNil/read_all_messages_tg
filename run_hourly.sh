@@ -11,9 +11,9 @@ if [ -d "$SCRIPT_DIR/venv" ]; then
     source "$SCRIPT_DIR/venv/bin/activate"
 fi
 
-# Function to clean up old log files (keep last 7 days)
+# Clean up old timestamped log files (script now uses single rotating telegram_reader.log)
 cleanup_old_logs() {
-    find "$SCRIPT_DIR" -name "telegram_reader_*.log" -type f -mtime +7 -delete
+    find "$SCRIPT_DIR" -name "telegram_reader_*.log" -type f -delete 2>/dev/null || true
 }
 
 # Cleanup function to remove PID file on exit

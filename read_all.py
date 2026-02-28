@@ -3,23 +3,35 @@ from datetime import datetime
 import asyncio
 from telethon.tl.functions.stories import GetAllStoriesRequest, ReadStoriesRequest
 import logging
+import logging.handlers
 import os
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Настройка логирования
-log_filename = f'telegram_reader_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_filename, encoding='utf-8'),
-        logging.StreamHandler()  # This will also print to console
-    ]
+# Single rotating log file (max 1MB, keep 2 backups = 3 files total)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+log_filename = os.path.join(script_dir, 'telegram_reader.log')
+file_handler = logging.handlers.RotatingFileHandler(
+    log_filename, maxBytes=1024 * 1024, backupCount=2, encoding='utf-8'
 )
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 logger = logging.getLogger(__name__)
+
+# Clean up old timestamped log files (from previous setup - no longer created)
+for f in os.listdir(script_dir):
+    if f.startswith('telegram_reader_') and f.endswith('.log'):
+        try:
+            filepath = os.path.join(script_dir, f)
+            if os.path.isfile(filepath):
+                os.remove(filepath)
+        except OSError:
+            pass
 
 # Get credentials from environment variables
 api_id = os.getenv('API_ID')
