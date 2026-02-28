@@ -57,6 +57,9 @@ telegram_reader_*.log
 # Process ID
 reader.pid
 
+# nohup output
+nohup.out
+
 # Python virtual environment
 venv/
 __pycache__/
