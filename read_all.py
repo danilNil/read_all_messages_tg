@@ -45,6 +45,84 @@ if not all([api_id, api_hash, phone_number]):
 # Создание клиента
 client = TelegramClient('session_name', api_id, api_hash)
 
+
+async def process_forum_topics(dialog):
+    """Mark all unread messages in forum topics (Threads) as read."""
+    entity = dialog.entity
+    logger.info(f'Chat {dialog.title} is a forum (has topics). Processing topics...')
+    try:
+        # offset_date в будущем = начать с последних топиков (по API)
+        topics_result = await client(functions.channels.GetForumTopicsRequest(
+            channel=entity,
+            offset_date=datetime.utcnow(),
+            offset_id=0,
+            offset_topic=0,
+            limit=100
+        ))
+        topics = getattr(topics_result, 'topics', [])
+        logger.info(f'Found {len(topics)} topics in forum {dialog.title}')
+
+        if topics:
+            for topic in topics:
+                if topic.unread_count <= 0:
+                    continue
+                logger.info(
+                    f"Processing topic '{topic.title}' in chat {dialog.title} "
+                    f"(Unread in topic: {topic.unread_count})"
+                )
+                try:
+                    # msg_id = topic starter msg id (topic.id = messageActionTopicCreate id for forums)
+                    await client(functions.messages.ReadDiscussionRequest(
+                        peer=entity,
+                        msg_id=topic.id,
+                        read_max_id=topic.top_message
+                    ))
+                    logger.info(f"Marked topic '{topic.title}' in chat {dialog.title} as read")
+                    await asyncio.sleep(0.5)
+                except Exception as e:
+                    logger.error(f"Failed to mark topic '{topic.title}' in chat {dialog.title} as read: {e}")
+        else:
+            # GetForumTopics вернул 0 (монoфорум или др.) — помечаем весь канал как прочитанный
+            logger.info(f'No topics from API for {dialog.title}, using ReadHistory fallback')
+            try:
+                last_msg = await client.get_messages(entity, limit=1)
+                max_id = last_msg[0].id if last_msg else 0
+                if max_id > 0:
+                    await client(functions.channels.ReadHistoryRequest(
+                        channel=entity,
+                        max_id=max_id
+                    ))
+                    logger.info(f"Marked {dialog.title} as read (fallback)")
+                else:
+                    logger.warning(f"No messages in {dialog.title} to mark as read")
+            except Exception as e:
+                logger.error(f"ReadHistory fallback failed for {dialog.title}: {e}")
+    except Exception as e:
+        logger.error(f"Error processing forum topics in chat {dialog.title}: {e}")
+
+
+async def process_regular_chat(dialog):
+    """Mark unread messages in a regular chat as read (skip mentions)."""
+    async for message in client.iter_messages(dialog.id, limit=dialog.unread_count):
+        try:
+            if getattr(message, 'mentioned', False):
+                logger.info(f'Skipping message with mention from chat {dialog.title}')
+                continue
+            date = message.date.strftime("%Y-%m-%d %H:%M:%S")
+            sender = "Unknown"
+            if hasattr(message.sender, 'first_name'):
+                sender = message.sender.first_name
+                if message.sender.last_name:
+                    sender += f" {message.sender.last_name}"
+            elif hasattr(message.sender, 'title'):
+                sender = message.sender.title
+            logger.info(f'Reading message from {sender} at {date}: {(message.text or "")[:100]}...')
+            await message.mark_read()
+            logger.info(f'Marked message as read')
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+
+
 async def main():
     # Вход в аккаунт
     await client.start(phone_number)
@@ -97,51 +175,24 @@ async def main():
     except Exception as e:
         logger.error(f"Error getting stories: {e}")
 
-    # Получение списка только архивных чатов с непрочитанными сообщениями
+    # Получение архивных чатов: с непрочитанными ИЛИ форумы (unread может не учитываться на уровне диалога)
     archived_dialogs = []
     async for dialog in client.iter_dialogs(archived=True):
-        if dialog.archived and dialog.unread_count > 0:
+        if not dialog.archived:
+            continue
+        is_forum = getattr(dialog.entity, 'forum', False)
+        if dialog.unread_count > 0 or is_forum:
             archived_dialogs.append(dialog)
 
-    logger.info(f"Found {len(archived_dialogs)} archived chats with unread messages")
+    logger.info(f"Found {len(archived_dialogs)} archived chats to process")
     
     for dialog in archived_dialogs:
         logger.info(f'Processing chat: {dialog.title} (Unread: {dialog.unread_count})')
-        
-        # Получаем только непрочитанные сообщения из чата
-        async for message in client.iter_messages(dialog.id, limit=dialog.unread_count):
-            try:
-                # Проверяем, есть ли упоминание пользователя в сообщении
-                mentioned = False
-                if hasattr(message, 'mentioned'):
-                    mentioned = message.mentioned
-                
-                # Пропускаем сообщения с упоминанием пользователя
-                if mentioned:
-                    logger.info(f'Skipping message with mention from chat {dialog.title}')
-                    continue
-                
-                # Форматируем дату сообщения
-                date = message.date.strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Получаем имя отправителя с учетом типа отправителя
-                if hasattr(message.sender, 'first_name'):  # Для пользователей
-                    sender = message.sender.first_name
-                    if message.sender.last_name:
-                        sender += f" {message.sender.last_name}"
-                elif hasattr(message.sender, 'title'):  # Для каналов
-                    sender = message.sender.title
-                else:
-                    sender = "Unknown"
-
-                # Логируем информацию о сообщении
-                logger.info(f'Reading message from {sender} at {date}: {message.text[:100]}...')
-                
-                # Помечаем сообщение как прочитанное
-                await message.mark_read()
-                logger.info(f'Marked message as read')
-            except Exception as e:
-                logger.error(f"Error processing message: {e}")
+        is_forum = getattr(dialog.entity, 'forum', False)
+        if is_forum:
+            await process_forum_topics(dialog)
+        else:
+            await process_regular_chat(dialog)
 
     logger.info("Finished processing all messages and stories")
 
