@@ -52,7 +52,7 @@ session_name.session
 session_name.session-journal
 
 # Logs
-telegram_reader_*.log
+telegram_reader.log.*
 
 # Process ID
 reader.pid
