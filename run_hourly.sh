@@ -2,13 +2,20 @@
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+RUNNER_LOG="$SCRIPT_DIR/run_hourly.log"
 
 # Create PID file
 echo $$ > "$SCRIPT_DIR/reader.pid"
 
-# Activate virtual environment if it exists
-if [ -d "$SCRIPT_DIR/venv" ]; then
-    source "$SCRIPT_DIR/venv/bin/activate"
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $*"
+}
+
+# Use the project virtualenv directly when it exists.
+if [ -x "$SCRIPT_DIR/venv/bin/python" ]; then
+    PYTHON_BIN="$SCRIPT_DIR/venv/bin/python"
+else
+    PYTHON_BIN="$(command -v python3 || command -v python)"
 fi
 
 # Clean up old timestamped log files (script now uses single rotating telegram_reader.log)
@@ -27,7 +34,7 @@ trap cleanup EXIT SIGINT SIGTERM
 
 # If running in background mode, redirect output to nohup.out
 if [[ "$1" == "background" ]]; then
-    exec nohup "$0" run >> "$SCRIPT_DIR/nohup.out" 2>&1 &
+    nohup "$0" run >> "$RUNNER_LOG" 2>&1 &
     echo "Started in background mode. PID: $!"
     echo $! > "$SCRIPT_DIR/reader.pid"
     exit 0
@@ -38,14 +45,19 @@ if [[ "$1" == "run" ]]; then
     while true; do
         # Clean up old logs
         cleanup_old_logs
+
+        log "Starting iteration with Python: $PYTHON_BIN"
         
         # Run the Python script
-        python "$SCRIPT_DIR/read_all.py"
+        "$PYTHON_BIN" "$SCRIPT_DIR/read_all.py"
+        exit_code=$?
+        log "Iteration finished with exit code: $exit_code"
         
         # Sleep for 1 hour (3600 seconds)
+        log "Sleeping for 3600 seconds"
         sleep 3600
         
-        echo "Running next iteration..."
+        log "Running next iteration..."
     done
 fi
 

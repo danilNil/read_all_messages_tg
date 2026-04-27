@@ -1,10 +1,9 @@
-from telethon import TelegramClient, types, functions
 from datetime import datetime
 import asyncio
-from telethon.tl.functions.stories import GetAllStoriesRequest, ReadStoriesRequest
 import logging
 import logging.handlers
 import os
+import sys
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -22,6 +21,21 @@ stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(m
 
 logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 logger = logging.getLogger(__name__)
+
+try:
+    from telethon import TelegramClient, functions
+    from telethon.tl.functions.stories import GetAllStoriesRequest, ReadStoriesRequest
+except ModuleNotFoundError as e:
+    logger.exception(
+        "Missing Python dependency '%s'. Install dependencies with: %s -m pip install -r %s",
+        e.name,
+        sys.executable,
+        os.path.join(script_dir, 'requirements.txt'),
+    )
+    raise SystemExit(1)
+except Exception:
+    logger.exception("Failed to import Telegram libraries")
+    raise SystemExit(1)
 
 # Clean up old timestamped log files (from previous setup - no longer created)
 for f in os.listdir(script_dir):
@@ -43,7 +57,8 @@ if not all([api_id, api_hash, phone_number]):
     exit(1)
 
 # Создание клиента
-client = TelegramClient('session_name', api_id, api_hash)
+session_path = os.path.join(script_dir, 'session_name')
+client = TelegramClient(session_path, api_id, api_hash)
 
 
 async def process_forum_topics(dialog):
@@ -196,5 +211,14 @@ async def main():
 
     logger.info("Finished processing all messages and stories")
 
-with client:
-    client.loop.run_until_complete(main())
+if __name__ == '__main__':
+    try:
+        logger.info("Starting telegram reader with Python: %s", sys.executable)
+        with client:
+            client.loop.run_until_complete(main())
+    except Exception:
+        logger.exception(
+            "Fatal error while running telegram reader. If Telegram asks for a new login code, "
+            "run the script manually in a terminal to refresh the session."
+        )
+        raise SystemExit(1)

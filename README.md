@@ -44,7 +44,7 @@ The `run_hourly.sh` script is designed to run `read_all.py` in an hourly interva
 
    The background mode will:
    - Keep running even after terminal is closed
-   - Write output to `nohup.out` in the script directory
+   - Write runner output to `run_hourly.log` in the script directory
    - Create a PID file for process management
 
 ## How it works
@@ -52,10 +52,10 @@ The `run_hourly.sh` script is designed to run `read_all.py` in an hourly interva
 The script:
 - Automatically finds its own directory location
 - Creates a PID file (`reader.pid`) for process tracking
-- Activates the Python virtual environment if it exists
+- Uses `venv/bin/python` directly when it exists
 - Runs `read_all.py` immediately when started
-- Creates log files for each run (`telegram_reader_YYYYMMDD_HHMMSS.log`)
-- Automatically cleans up log files older than 7 days
+- Writes Telegram reader logs to `telegram_reader.log` with rotation to `telegram_reader.log.1` and `telegram_reader.log.2`
+- Removes old timestamped logs from the previous logging setup
 - Sleeps for 1 hour (3600 seconds)
 - Repeats this cycle until stopped
 
