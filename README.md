@@ -89,3 +89,19 @@ You can stop the script in several ways:
    - Press `Ctrl+C`
 
 The script will clean up its PID file automatically when stopped.
+
+## Status UI
+
+This project also includes a small local Node.js UI for checking and controlling the reader.
+
+Run it manually:
+
+```bash
+npm start
+```
+
+Open `http://127.0.0.1:3000`.
+
+The UI shows whether the hourly reader is running, whether Telegram has unread non-archived dialogs, and provides start/stop/restart controls for `run_hourly.sh`.
+
+For macOS autostart through `launchd`, see `docs/status-ui.md`.

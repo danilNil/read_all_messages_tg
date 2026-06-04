@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.read-all.status-ui</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/opt/node/bin/node</string>
+    <string>/Users/danilnikiforov/IT development/Python Development/Read all/server.mjs</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/danilnikiforov/IT development/Python Development/Read all</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOST</key>
+    <string>127.0.0.1</string>
+    <key>PORT</key>
+    <string>3000</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/danilnikiforov/IT development/Python Development/Read all/status-ui.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/danilnikiforov/IT development/Python Development/Read all/status-ui.err.log</string>
+</dict>
+</plist>

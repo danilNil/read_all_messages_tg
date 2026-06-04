@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Read All Status</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7f8;
+        --panel: #ffffff;
+        --text: #182026;
+        --muted: #687782;
+        --line: #dce3e7;
+        --good: #16794c;
+        --good-bg: #e7f4ed;
+        --bad: #b42318;
+        --bad-bg: #fff0ee;
+        --warn: #9a5b05;
+        --warn-bg: #fff6df;
+        --button: #1f2933;
+        --button-hover: #111820;
+        --button-muted: #eef2f4;
+        --button-muted-hover: #e0e7eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      main {
+        width: min(920px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0;
+      }
+
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.15;
+        font-weight: 720;
+      }
+
+      .subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .topMeta {
+        color: var(--muted);
+        font-size: 13px;
+        text-align: right;
+        min-width: 190px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(24, 32, 38, 0.04);
+      }
+
+      .statusGrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .statusCard {
+        min-height: 156px;
+        padding: 18px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+        text-transform: uppercase;
+      }
+
+      .stateLine {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--warn);
+      }
+
+      .dot.good {
+        background: var(--good);
+      }
+
+      .dot.bad {
+        background: var(--bad);
+      }
+
+      .state {
+        font-size: 28px;
+        line-height: 1.05;
+        font-weight: 760;
+      }
+
+      .details {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 16px;
+        padding: 16px;
+      }
+
+      button {
+        height: 38px;
+        border: 0;
+        border-radius: 7px;
+        padding: 0 14px;
+        background: var(--button);
+        color: #ffffff;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 680;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--button-hover);
+      }
+
+      button.secondary {
+        background: var(--button-muted);
+        color: var(--text);
+      }
+
+      button.secondary:hover:not(:disabled) {
+        background: var(--button-muted-hover);
+      }
+
+      button.danger {
+        background: var(--bad);
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.55;
+      }
+
+      .message {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .errorBox {
+        display: none;
+        margin-top: 12px;
+        padding: 12px 14px;
+        color: var(--bad);
+        background: var(--bad-bg);
+        border: 1px solid #ffd3cf;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .errorBox.visible {
+        display: block;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: min(100vw - 24px, 920px);
+          padding: 18px 0;
+        }
+
+        header {
+          display: block;
+        }
+
+        .topMeta {
+          margin-top: 12px;
+          text-align: left;
+        }
+
+        .statusGrid {
+          grid-template-columns: 1fr;
+        }
+
+        .state {
+          font-size: 25px;
+        }
+
+        .controls {
+          align-items: stretch;
+        }
+
+        button {
+          flex: 1 1 120px;
+        }
+
+        .message {
+          flex-basis: 100%;
+          margin-left: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Read All</h1>
+          <p class="subtitle">Локальная панель Telegram reader</p>
+        </div>
+        <div class="topMeta" id="serverMeta">Загрузка...</div>
+      </header>
+
+      <section class="statusGrid" aria-live="polite">
+        <article class="panel statusCard">
+          <div class="label">Reader</div>
+          <div class="stateLine">
+            <span class="dot" id="readerDot"></span>
+            <div class="state" id="readerState">проверяем</div>
+          </div>
+          <div class="details" id="readerDetails">Читаю reader.pid</div>
+        </article>
+
+        <article class="panel statusCard">
+          <div class="label">Непрочитанные вне архива</div>
+          <div class="stateLine">
+            <span class="dot" id="telegramDot"></span>
+            <div class="state" id="telegramState">проверяем</div>
+          </div>
+          <div class="details" id="telegramDetails">Проверяю Telegram</div>
+        </article>
+      </section>
+
+      <section class="panel controls">
+        <button id="startButton" type="button">Старт</button>
+        <button id="restartButton" class="secondary" type="button">Рестарт</button>
+        <button id="stopButton" class="danger" type="button">Стоп</button>
+        <div class="message" id="actionMessage">Готово к управлению</div>
+      </section>
+
+      <div class="errorBox" id="errorBox"></div>
+    </main>
+
+    <script>
+      const els = {
+        serverMeta: document.querySelector('#serverMeta'),
+        readerDot: document.querySelector('#readerDot'),
+        readerState: document.querySelector('#readerState'),
+        readerDetails: document.querySelector('#readerDetails'),
+        telegramDot: document.querySelector('#telegramDot'),
+        telegramState: document.querySelector('#telegramState'),
+        telegramDetails: document.querySelector('#telegramDetails'),
+        errorBox: document.querySelector('#errorBox'),
+        actionMessage: document.querySelector('#actionMessage'),
+        buttons: Array.from(document.querySelectorAll('button')),
+        startButton: document.querySelector('#startButton'),
+        restartButton: document.querySelector('#restartButton'),
+        stopButton: document.querySelector('#stopButton'),
+      };
+
+      let busy = false;
+
+      function formatTime(value) {
+        if (!value) return 'нет данных';
+        return new Intl.DateTimeFormat('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }).format(new Date(value));
+      }
+
+      function setDot(el, state) {
+        el.classList.remove('good', 'bad');
+        if (state) el.classList.add(state);
+      }
+
+      function setBusy(value) {
+        busy = value;
+        els.buttons.forEach((button) => {
+          button.disabled = value;
+        });
+      }
+
+      function renderStatus(data) {
+        const reader = data.reader || {};
+        const telegram = data.telegram || {};
+
+        setDot(els.readerDot, reader.running ? 'good' : 'bad');
+        els.readerState.textContent = reader.running ? 'работает' : 'не работает';
+        els.readerDetails.textContent = reader.running
+          ? `PID ${reader.pid}`
+          : reader.stalePid
+            ? 'PID-файл устарел'
+            : 'Процесс не найден';
+
+        if (telegram.error) {
+          setDot(els.telegramDot, 'bad');
+          els.telegramState.textContent = 'ошибка';
+          els.telegramDetails.textContent = `Проверка: ${formatTime(telegram.checkedAt)}`;
+          els.errorBox.textContent = telegram.error;
+          els.errorBox.classList.add('visible');
+        } else {
+          setDot(els.telegramDot, telegram.hasUnreadInbox ? 'bad' : 'good');
+          els.telegramState.textContent = telegram.hasUnreadInbox ? 'есть' : 'нет';
+          els.telegramDetails.textContent = `${telegram.unreadDialogCount || 0} чатов, проверка: ${formatTime(telegram.checkedAt)}${telegram.cached ? ' (кэш)' : ''}`;
+          els.errorBox.classList.remove('visible');
+        }
+
+        els.serverMeta.textContent = `Сервер: ${data.server.host}:${data.server.port}, ${formatTime(data.server.checkedAt)}`;
+
+        if (!busy) {
+          els.startButton.disabled = reader.running;
+          els.stopButton.disabled = !reader.running;
+        }
+      }
+
+      async function refreshStatus() {
+        try {
+          const response = await fetch('/api/status');
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          renderStatus(await response.json());
+        } catch (error) {
+          setDot(els.readerDot, 'bad');
+          setDot(els.telegramDot, 'bad');
+          els.readerState.textContent = 'ошибка';
+          els.telegramState.textContent = 'ошибка';
+          els.serverMeta.textContent = 'Сервер недоступен';
+          els.errorBox.textContent = error.message;
+          els.errorBox.classList.add('visible');
+        }
+      }
+
+      async function postAction(action) {
+        setBusy(true);
+        els.actionMessage.textContent = 'Выполняю...';
+        try {
+          const response = await fetch(`/api/reader/${action}`, { method: 'POST' });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Команда не выполнена');
+          }
+          els.actionMessage.textContent = action === 'start'
+            ? 'Reader запущен'
+            : action === 'stop'
+              ? 'Reader остановлен'
+              : 'Reader перезапущен';
+          await refreshStatus();
+        } catch (error) {
+          els.actionMessage.textContent = 'Ошибка команды';
+          els.errorBox.textContent = error.message;
+          els.errorBox.classList.add('visible');
+        } finally {
+          setBusy(false);
+          await refreshStatus();
+        }
+      }
+
+      els.startButton.addEventListener('click', () => postAction('start'));
+      els.stopButton.addEventListener('click', () => postAction('stop'));
+      els.restartButton.addEventListener('click', () => postAction('restart'));
+
+      refreshStatus();
+      setInterval(refreshStatus, 15000);
+    </script>
+  </body>
+</html>
