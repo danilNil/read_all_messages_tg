@@ -95,7 +95,7 @@ Recommended runtime behavior:
 - Default port: `3000`, configurable through `PORT`.
 - Poll interval in UI: 10-30 seconds.
 - Cache Telegram unread result for around 15-30 seconds.
-- Helper timeout: 10-20 seconds.
+- Helper timeout: around 30 seconds.
 - Server host: `127.0.0.1` by default.
 - Start reader command: `./run_hourly.sh background`.
 - Stop reader behavior: read `reader.pid`, check the process, send `SIGTERM`, and verify that the PID file/process is gone.

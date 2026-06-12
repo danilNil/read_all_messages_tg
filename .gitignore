@@ -36,6 +36,7 @@ env/
 # Session files (specific to your Telegram client)
 session_name.session
 session_name.session-journal
+session_name.lock
 
 # Unit test / coverage reports
 htmlcov/
@@ -50,12 +51,14 @@ coverage.xml
 # Python session
 session_name.session
 session_name.session-journal
+session_name.lock
 
 # Logs
 telegram_reader.log.*
 
 # Process ID
 reader.pid
+reader_status.json
 
 # nohup output
 nohup.out

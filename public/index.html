@@ -38,7 +38,7 @@
       }
 
       main {
-        width: min(920px, calc(100vw - 32px));
+        width: min(1080px, calc(100vw - 32px));
         margin: 0 auto;
         padding: 32px 0;
       }
@@ -80,7 +80,7 @@
 
       .statusGrid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
       }
 
@@ -132,6 +132,13 @@
         line-height: 1.45;
       }
 
+      .dialogList {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
       .controls {
         display: flex;
         flex-wrap: wrap;
@@ -139,6 +146,48 @@
         align-items: center;
         margin-top: 16px;
         padding: 16px;
+      }
+
+      .vkSettings {
+        margin-top: 16px;
+        padding: 16px;
+      }
+
+      .settingsForm {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) auto auto;
+        gap: 10px;
+        align-items: end;
+        margin-top: 12px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      input {
+        width: 100%;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 0 12px;
+        background: #ffffff;
+        color: var(--text);
+        font: inherit;
+        font-size: 14px;
+      }
+
+      input:focus {
+        border-color: #8aa2b1;
+        outline: 2px solid #d8e7ef;
+        outline-offset: 0;
       }
 
       button {
@@ -220,6 +269,10 @@
           grid-template-columns: 1fr;
         }
 
+        .settingsForm {
+          grid-template-columns: 1fr;
+        }
+
         .state {
           font-size: 25px;
         }
@@ -260,12 +313,32 @@
         </article>
 
         <article class="panel statusCard">
+          <div class="label">Архив</div>
+          <div class="stateLine">
+            <span class="dot" id="archiveDot"></span>
+            <div class="state" id="archiveState">проверяем</div>
+          </div>
+          <div class="details" id="archiveDetails">Читаю reader status</div>
+        </article>
+
+        <article class="panel statusCard">
           <div class="label">Непрочитанные вне архива</div>
           <div class="stateLine">
             <span class="dot" id="telegramDot"></span>
             <div class="state" id="telegramState">проверяем</div>
           </div>
           <div class="details" id="telegramDetails">Проверяю Telegram</div>
+          <div class="dialogList" id="telegramDialogs"></div>
+        </article>
+
+        <article class="panel statusCard">
+          <div class="label">VK</div>
+          <div class="stateLine">
+            <span class="dot" id="vkDot"></span>
+            <div class="state" id="vkState">проверяем</div>
+          </div>
+          <div class="details" id="vkDetails">Проверяю VK</div>
+          <div class="dialogList" id="vkDialogs"></div>
         </article>
       </section>
 
@@ -274,6 +347,19 @@
         <button id="restartButton" class="secondary" type="button">Рестарт</button>
         <button id="stopButton" class="danger" type="button">Стоп</button>
         <div class="message" id="actionMessage">Готово к управлению</div>
+      </section>
+
+      <section class="panel vkSettings">
+        <div class="label">VK session</div>
+        <form class="settingsForm" id="vkTokenForm">
+          <label class="field">
+            <span>Access token</span>
+            <input id="vkTokenInput" type="password" autocomplete="off" placeholder="Вставь VK access token">
+          </label>
+          <button id="checkVkButton" class="secondary" type="button">Проверить</button>
+          <button id="saveVkButton" type="submit">Сохранить</button>
+        </form>
+        <div class="details" id="vkSessionDetails">Токен не показывается после сохранения</div>
       </section>
 
       <div class="errorBox" id="errorBox"></div>
@@ -285,9 +371,22 @@
         readerDot: document.querySelector('#readerDot'),
         readerState: document.querySelector('#readerState'),
         readerDetails: document.querySelector('#readerDetails'),
+        archiveDot: document.querySelector('#archiveDot'),
+        archiveState: document.querySelector('#archiveState'),
+        archiveDetails: document.querySelector('#archiveDetails'),
         telegramDot: document.querySelector('#telegramDot'),
         telegramState: document.querySelector('#telegramState'),
         telegramDetails: document.querySelector('#telegramDetails'),
+        telegramDialogs: document.querySelector('#telegramDialogs'),
+        vkDot: document.querySelector('#vkDot'),
+        vkState: document.querySelector('#vkState'),
+        vkDetails: document.querySelector('#vkDetails'),
+        vkDialogs: document.querySelector('#vkDialogs'),
+        vkTokenForm: document.querySelector('#vkTokenForm'),
+        vkTokenInput: document.querySelector('#vkTokenInput'),
+        checkVkButton: document.querySelector('#checkVkButton'),
+        saveVkButton: document.querySelector('#saveVkButton'),
+        vkSessionDetails: document.querySelector('#vkSessionDetails'),
         errorBox: document.querySelector('#errorBox'),
         actionMessage: document.querySelector('#actionMessage'),
         buttons: Array.from(document.querySelectorAll('button')),
@@ -319,9 +418,61 @@
         });
       }
 
+      function renderProviderStatus(provider, dot, stateEl, detailsEl, dialogsEl, label) {
+        if (provider.error) {
+          setDot(dot, 'bad');
+          stateEl.textContent = 'ошибка';
+          detailsEl.textContent = `${label}: ${provider.error}`;
+          dialogsEl.textContent = `Проверка: ${formatTime(provider.checkedAt)}${provider.cached ? ' (кэш)' : ''}`;
+          return;
+        }
+
+        setDot(dot, provider.hasUnreadInbox ? 'bad' : 'good');
+        stateEl.textContent = provider.hasUnreadInbox ? 'есть' : 'нет';
+        detailsEl.textContent = `${provider.unreadDialogCount || 0} чатов, проверка: ${formatTime(provider.checkedAt)}${provider.cached ? ' (кэш)' : ''}`;
+        dialogsEl.textContent = (provider.unreadDialogs || [])
+          .slice(0, 3)
+          .map((dialog) => `${dialog.title}: ${dialog.unreadCount}${dialog.type ? `, ${dialog.type}` : ''}`)
+          .join(', ');
+      }
+
+      function renderVkSession(session) {
+        if (!session.configured) {
+          els.vkSessionDetails.textContent = 'VK token не добавлен';
+          return;
+        }
+
+        els.vkSessionDetails.textContent = session.valid
+          ? `Сессия валидна, проверка: ${formatTime(session.checkedAt)}${session.cached ? ' (кэш)' : ''}`
+          : `Сессия невалидна: ${session.error || 'ошибка проверки'}`;
+      }
+
+      function renderArchiveStatus(archive) {
+        if (archive.error) {
+          setDot(els.archiveDot, 'bad');
+          els.archiveState.textContent = 'ошибка';
+          els.archiveDetails.textContent = archive.error;
+          return;
+        }
+
+        if (!archive.lastReadAt) {
+          setDot(els.archiveDot, '');
+          els.archiveState.textContent = 'нет данных';
+          els.archiveDetails.textContent = 'Архив ещё не читался';
+          return;
+        }
+
+        setDot(els.archiveDot, 'good');
+        els.archiveState.textContent = formatTime(archive.lastReadAt);
+        els.archiveDetails.textContent = `${archive.processedDialogCount || 0}/${archive.foundDialogCount || 0} чатов`;
+      }
+
       function renderStatus(data) {
         const reader = data.reader || {};
+        const archive = data.archive || {};
         const telegram = data.telegram || {};
+        const vk = data.vk || {};
+        const vkSession = data.vkSession || {};
 
         setDot(els.readerDot, reader.running ? 'good' : 'bad');
         els.readerState.textContent = reader.running ? 'работает' : 'не работает';
@@ -331,18 +482,18 @@
             ? 'PID-файл устарел'
             : 'Процесс не найден';
 
-        if (telegram.error) {
-          setDot(els.telegramDot, 'bad');
-          els.telegramState.textContent = 'ошибка';
-          els.telegramDetails.textContent = `Проверка: ${formatTime(telegram.checkedAt)}`;
-          els.errorBox.textContent = telegram.error;
-          els.errorBox.classList.add('visible');
-        } else {
-          setDot(els.telegramDot, telegram.hasUnreadInbox ? 'bad' : 'good');
-          els.telegramState.textContent = telegram.hasUnreadInbox ? 'есть' : 'нет';
-          els.telegramDetails.textContent = `${telegram.unreadDialogCount || 0} чатов, проверка: ${formatTime(telegram.checkedAt)}${telegram.cached ? ' (кэш)' : ''}`;
-          els.errorBox.classList.remove('visible');
-        }
+        renderArchiveStatus(archive);
+
+        renderProviderStatus(
+          telegram,
+          els.telegramDot,
+          els.telegramState,
+          els.telegramDetails,
+          els.telegramDialogs,
+          'Telegram',
+        );
+        renderProviderStatus(vk, els.vkDot, els.vkState, els.vkDetails, els.vkDialogs, 'VK');
+        renderVkSession(vkSession);
 
         els.serverMeta.textContent = `Сервер: ${data.server.host}:${data.server.port}, ${formatTime(data.server.checkedAt)}`;
 
@@ -359,9 +510,13 @@
           renderStatus(await response.json());
         } catch (error) {
           setDot(els.readerDot, 'bad');
+          setDot(els.archiveDot, 'bad');
           setDot(els.telegramDot, 'bad');
+          setDot(els.vkDot, 'bad');
           els.readerState.textContent = 'ошибка';
+          els.archiveState.textContent = 'ошибка';
           els.telegramState.textContent = 'ошибка';
+          els.vkState.textContent = 'ошибка';
           els.serverMeta.textContent = 'Сервер недоступен';
           els.errorBox.textContent = error.message;
           els.errorBox.classList.add('visible');
@@ -393,9 +548,71 @@
         }
       }
 
+      async function checkVkSession() {
+        setBusy(true);
+        els.actionMessage.textContent = 'Проверяю VK...';
+        try {
+          const response = await fetch('/api/vk/session/check', { method: 'POST' });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'VK session check failed');
+
+          renderVkSession(data);
+          els.actionMessage.textContent = data.valid ? 'VK-сессия валидна' : 'VK-сессия невалидна';
+          if (!data.valid) {
+            els.errorBox.textContent = data.error || 'VK session is invalid';
+            els.errorBox.classList.add('visible');
+          }
+        } catch (error) {
+          els.actionMessage.textContent = 'Ошибка VK';
+          els.errorBox.textContent = error.message;
+          els.errorBox.classList.add('visible');
+        } finally {
+          setBusy(false);
+          await refreshStatus();
+        }
+      }
+
+      async function saveVkToken(event) {
+        event.preventDefault();
+        const token = els.vkTokenInput.value.trim();
+        if (!token) {
+          els.errorBox.textContent = 'Вставь VK access token';
+          els.errorBox.classList.add('visible');
+          return;
+        }
+
+        setBusy(true);
+        els.actionMessage.textContent = 'Проверяю и сохраняю VK token...';
+        try {
+          const response = await fetch('/api/vk/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || data.session?.error || 'VK token was not saved');
+          }
+
+          els.vkTokenInput.value = '';
+          els.errorBox.classList.remove('visible');
+          renderVkSession(data.session || {});
+          els.actionMessage.textContent = 'VK token сохранен';
+        } catch (error) {
+          els.actionMessage.textContent = 'VK token не сохранен';
+          els.errorBox.textContent = error.message;
+          els.errorBox.classList.add('visible');
+        } finally {
+          setBusy(false);
+          await refreshStatus();
+        }
+      }
+
       els.startButton.addEventListener('click', () => postAction('start'));
       els.stopButton.addEventListener('click', () => postAction('stop'));
       els.restartButton.addEventListener('click', () => postAction('restart'));
+      els.checkVkButton.addEventListener('click', checkVkSession);
+      els.vkTokenForm.addEventListener('submit', saveVkToken);
 
       refreshStatus();
       setInterval(refreshStatus, 15000);

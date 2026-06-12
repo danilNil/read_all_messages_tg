@@ -102,6 +102,8 @@ npm start
 
 Open `http://127.0.0.1:3000`.
 
-The UI shows whether the hourly reader is running, whether Telegram has unread non-archived dialogs, and provides start/stop/restart controls for `run_hourly.sh`.
+The UI shows whether the hourly reader is running, whether Telegram has unread non-archived dialogs, whether VK has unread dialogs, and provides start/stop/restart controls for `run_hourly.sh`.
+
+VK token validity can be checked from the UI. A new VK access token can also be added there; the server validates it before saving it to `.env`.
 
 For macOS autostart through `launchd`, see `docs/status-ui.md`.
