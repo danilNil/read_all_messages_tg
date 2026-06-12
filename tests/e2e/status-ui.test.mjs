@@ -88,6 +88,7 @@ function startServer(t, fixture, extraEnv = {}) {
       ENV_FILE: fixture.envFile,
       VK_CACHE_MS: '0',
       VK_CHECK_TIMEOUT_MS: '5000',
+      READER_AUTO_START: 'false',
       ...extraEnv,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -192,6 +193,7 @@ test('status shows when archive was last read', async (t) => {
   const status = await getJson(baseUrl, '/api/status');
 
   assert.equal(status.archive.lastReadAt, '2026-06-12T03:45:14Z');
+  assert.equal(status.archive.nextReadAt, '2026-06-12T03:50:14.000Z');
   assert.equal(status.archive.processedDialogCount, 6);
   assert.equal(status.archive.foundDialogCount, 6);
   assert.equal(status.archive.error, null);

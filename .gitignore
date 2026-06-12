@@ -59,6 +59,7 @@ telegram_reader.log.*
 # Process ID
 reader.pid
 reader_status.json
+reader_desired_state.json
 
 # nohup output
 nohup.out

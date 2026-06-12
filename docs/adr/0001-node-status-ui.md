@@ -10,14 +10,14 @@ The project currently runs `read_all.py` through `run_hourly.sh`. The runner wri
 
 We want a simple UI that shows:
 
-- whether the hourly reader is running;
+- whether the reader loop is running;
 - whether there are unread Telegram messages outside the archive.
 
 We also want to recover from common operational failures through the UI: start the reader if it is not running, stop it, and restart it without opening a terminal.
 
 The second value must be checked against Telegram state, not inferred from logs. The current Python script mainly processes archived dialogs, while the UI requirement is specifically about unread messages that are not archived.
 
-There is one important boundary: the UI can manage the hourly reader, but it cannot help if the Node.js UI server itself is not running. The server therefore needs its own operating-system-level autostart/restart mechanism.
+There is one important boundary: the UI can manage the reader loop, but it cannot help if the Node.js UI server itself is not running. The server therefore needs its own operating-system-level autostart/restart mechanism.
 
 ## Decision
 
@@ -30,9 +30,9 @@ The server will provide:
 - `GET /` - static HTML UI.
 - `GET /api/status` - combined status response for the UI.
 - `GET /api/health` - lightweight server health response.
-- `POST /api/reader/start` - start the hourly reader.
-- `POST /api/reader/stop` - stop the hourly reader.
-- `POST /api/reader/restart` - stop and start the hourly reader.
+- `POST /api/reader/start` - start the reader loop.
+- `POST /api/reader/stop` - stop the reader loop.
+- `POST /api/reader/restart` - stop and start the reader loop.
 
 `GET /api/status` will return:
 

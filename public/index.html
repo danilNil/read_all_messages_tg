@@ -464,7 +464,7 @@
 
         setDot(els.archiveDot, 'good');
         els.archiveState.textContent = formatTime(archive.lastReadAt);
-        els.archiveDetails.textContent = `${archive.processedDialogCount || 0}/${archive.foundDialogCount || 0} чатов`;
+        els.archiveDetails.textContent = `${archive.processedDialogCount || 0}/${archive.foundDialogCount || 0} чатов, следующий: ${formatTime(archive.nextReadAt)}`;
       }
 
       function renderStatus(data) {

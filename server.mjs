@@ -9,11 +9,15 @@ const HOST = process.env.HOST || '127.0.0.1';
 const PORT = Number(process.env.PORT || 3000);
 const PID_FILE = process.env.READER_PID_FILE || path.join(__dirname, 'reader.pid');
 const READER_STATUS_FILE = process.env.READER_STATUS_FILE || path.join(__dirname, 'reader_status.json');
+const READER_DESIRED_STATE_FILE = process.env.READER_DESIRED_STATE_FILE || path.join(__dirname, 'reader_desired_state.json');
 const RUNNER = process.env.READER_RUNNER || path.join(__dirname, 'run_hourly.sh');
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
 const TELEGRAM_HELPER = process.env.TELEGRAM_HELPER || path.join(__dirname, 'check_unread_inbox.py');
 const HELPER_TIMEOUT_MS = Number(process.env.TELEGRAM_CHECK_TIMEOUT_MS || 30000);
 const TELEGRAM_CACHE_MS = Number(process.env.TELEGRAM_CACHE_MS || 20000);
+const READER_INTERVAL_SECONDS = Number(process.env.READER_INTERVAL_SECONDS || 300);
+const READER_MONITOR_MS = Number(process.env.READER_MONITOR_MS || 60000);
+const READER_AUTO_START = process.env.READER_AUTO_START !== 'false';
 const ENV_FILE = process.env.ENV_FILE || path.join(__dirname, '.env');
 const VK_API_BASE_URL = process.env.VK_API_BASE_URL || 'https://api.vk.com/method';
 const VK_API_VERSION = process.env.VK_API_VERSION || '5.199';
@@ -162,20 +166,47 @@ function isProcessRunning(pid) {
 async function getReaderStatus() {
   const pid = await readPid();
   const running = isProcessRunning(pid);
+  const desiredRunning = await getDesiredReaderRunning();
 
   return {
     running,
     pid: running ? pid : null,
     source: existsSync(PID_FILE) ? 'reader.pid' : null,
     stalePid: Boolean(pid && !running),
+    desiredRunning,
   };
+}
+
+async function getDesiredReaderRunning() {
+  if (!READER_AUTO_START) return false;
+
+  try {
+    const payload = JSON.parse(await fs.readFile(READER_DESIRED_STATE_FILE, 'utf8'));
+    return payload.desiredRunning !== false;
+  } catch {
+    return true;
+  }
+}
+
+async function setDesiredReaderRunning(desiredRunning) {
+  const payload = {
+    desiredRunning,
+    updatedAt: new Date().toISOString(),
+  };
+  await fs.writeFile(READER_DESIRED_STATE_FILE, `${JSON.stringify(payload)}\n`, { mode: 0o600 });
 }
 
 async function getArchiveStatus() {
   try {
     const payload = JSON.parse(await fs.readFile(READER_STATUS_FILE, 'utf8'));
+    const lastReadAt = payload.archiveLastReadAt || null;
+    const nextReadAt = lastReadAt
+      ? new Date(new Date(lastReadAt).getTime() + READER_INTERVAL_SECONDS * 1000).toISOString()
+      : null;
+
     return {
-      lastReadAt: payload.archiveLastReadAt || null,
+      lastReadAt,
+      nextReadAt,
       processedDialogCount: Number(payload.archiveProcessedDialogCount || 0),
       foundDialogCount: Number(payload.archiveFoundDialogCount || payload.archiveProcessedDialogCount || 0),
       error: payload.archiveError || null,
@@ -501,7 +532,9 @@ async function killProcessTree(pid, signal) {
   }
 }
 
-async function startReader() {
+async function startReader({ updateDesired = true } = {}) {
+  if (updateDesired) await setDesiredReaderRunning(true);
+
   const before = await getReaderStatus();
   if (before.running) return { ok: true, action: 'already-running', reader: before };
 
@@ -520,7 +553,9 @@ async function startReader() {
   };
 }
 
-async function stopReader() {
+async function stopReader({ updateDesired = true } = {}) {
+  if (updateDesired) await setDesiredReaderRunning(false);
+
   const before = await getReaderStatus();
   if (!before.running) {
     if (before.stalePid) await fs.rm(PID_FILE, { force: true });
@@ -549,11 +584,24 @@ async function stopReader() {
 }
 
 async function restartReader() {
-  const stopped = await stopReader();
+  await setDesiredReaderRunning(true);
+  const stopped = await stopReader({ updateDesired: false });
   if (!stopped.ok) return { ...stopped, action: 'restart-stop-failed' };
   await new Promise((resolve) => setTimeout(resolve, 500));
-  const started = await startReader();
+  const started = await startReader({ updateDesired: false });
   return { ...started, action: 'restart' };
+}
+
+async function ensureReaderRunning() {
+  if (!(await getDesiredReaderRunning())) return;
+
+  const status = await getReaderStatus();
+  if (status.running) return;
+
+  const result = await startReader({ updateDesired: false });
+  if (!result.ok) {
+    console.error(`Reader monitor failed to start reader: ${result.error || 'unknown error'}`);
+  }
 }
 
 async function saveVkToken(req, res) {
@@ -697,4 +745,6 @@ server.listen(PORT, HOST, () => {
   const address = server.address();
   serverPort = typeof address === 'object' && address ? address.port : PORT;
   console.log(`Read All status UI listening on http://${HOST}:${serverPort}`);
+  ensureReaderRunning();
+  setInterval(ensureReaderRunning, READER_MONITOR_MS);
 });

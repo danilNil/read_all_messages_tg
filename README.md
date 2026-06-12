@@ -1,6 +1,6 @@
 # Automated Script Runner
 
-This repository contains a script that automatically runs `read_all.py` every hour.
+This repository contains a script that automatically runs `read_all.py` every 5 minutes.
 
 ## Setup
 
@@ -23,7 +23,7 @@ This repository contains a script that automatically runs `read_all.py` every ho
 
 ## Usage
 
-The `run_hourly.sh` script is designed to run `read_all.py` in an hourly interval. Here's how to use it:
+The `run_hourly.sh` script is designed to run `read_all.py` every 5 minutes. Here's how to use it:
 
 1. Make sure the script is executable:
    ```bash
@@ -56,7 +56,7 @@ The script:
 - Runs `read_all.py` immediately when started
 - Writes Telegram reader logs to `telegram_reader.log` with rotation to `telegram_reader.log.1` and `telegram_reader.log.2`
 - Removes old timestamped logs from the previous logging setup
-- Sleeps for 1 hour (3600 seconds)
+- Sleeps for 5 minutes (300 seconds) by default
 - Repeats this cycle until stopped
 
 
@@ -102,7 +102,7 @@ npm start
 
 Open `http://127.0.0.1:3000`.
 
-The UI shows whether the hourly reader is running, whether Telegram has unread non-archived dialogs, whether VK has unread dialogs, and provides start/stop/restart controls for `run_hourly.sh`.
+The UI shows whether the reader is running, when the archive was last read, whether Telegram has unread non-archived dialogs, whether VK has unread dialogs, and provides start/stop/restart controls for `run_hourly.sh`.
 
 VK token validity can be checked from the UI. A new VK access token can also be added there; the server validates it before saving it to `.env`.
 

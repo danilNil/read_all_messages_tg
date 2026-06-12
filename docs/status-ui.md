@@ -14,6 +14,12 @@ http://127.0.0.1:3000
 
 The UI shows reader state, archive read state, Telegram unread state, VK unread state, and VK token validity.
 
+The reader loop runs every 5 minutes by default. Override it with:
+
+```bash
+READER_INTERVAL_SECONDS=300
+```
+
 ## Install macOS Autostart
 
 Copy the launchd template to the user agents directory:
@@ -69,7 +75,7 @@ Run end-to-end tests:
 npm run test:e2e
 ```
 
-The tests use Node's built-in test runner, start the real HTTP server on a random local port, and replace Telegram, VK, plus the hourly reader with temporary fake helpers. They do not connect to Telegram or VK and do not mark real messages as read.
+The tests use Node's built-in test runner, start the real HTTP server on a random local port, and replace Telegram, VK, plus the reader loop with temporary fake helpers. They do not connect to Telegram or VK and do not mark real messages as read.
 
 ## Telegram Session Lock
 

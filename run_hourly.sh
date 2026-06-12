@@ -3,6 +3,7 @@
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RUNNER_LOG="$SCRIPT_DIR/run_hourly.log"
+INTERVAL_SECONDS="${READER_INTERVAL_SECONDS:-300}"
 
 # Create PID file
 echo $$ > "$SCRIPT_DIR/reader.pid"
@@ -53,9 +54,8 @@ if [[ "$1" == "run" ]]; then
         exit_code=$?
         log "Iteration finished with exit code: $exit_code"
         
-        # Sleep for 1 hour (3600 seconds)
-        log "Sleeping for 3600 seconds"
-        sleep 3600
+        log "Sleeping for $INTERVAL_SECONDS seconds"
+        sleep "$INTERVAL_SECONDS"
         
         log "Running next iteration..."
     done
